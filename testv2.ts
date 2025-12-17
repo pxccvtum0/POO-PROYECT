@@ -30,7 +30,7 @@ interface Observer {
  */
 class NotificadorAdmin implements Observer {
     update(nombre: string, estado: EstadoCupo): void {
-        console.log(`\n📢 NOTIFICACIÓN: El aspirante ${nombre} ha cambiado su estado a: ${estado}`);
+        console.log(`\n NOTIFICACIÓN: El aspirante ${nombre} ha cambiado su estado a: ${estado}`);
     }
 }
 
