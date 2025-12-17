@@ -1,4 +1,4 @@
-import * as readline from 'readline';
+import  * as readline from 'readline';
 
 // --- INTERFACES Y TIPOS ---
 type EstadoCupo = "PENDIENTE" | "ACEPTADO" | "RECHAZADO";
