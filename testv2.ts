@@ -34,6 +34,7 @@ class NotificadorAdmin implements Observer {
     }
 }
 
+
 /**
  * [PRINCIPIO: Single Responsibility (S)]
  * La clase Aspirante solo se encarga de almacenar los datos del estudiante.
