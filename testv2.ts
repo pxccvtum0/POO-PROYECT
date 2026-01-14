@@ -1,68 +1,112 @@
-impot * as readline from 'readline';
+import * as readline from 'readline';
 
-// --- INTERFACES Y TIPOS ---
-type EstadoCupo = "PENDIENTE" | "ACEPTADO" | "RECHAZADO";
+// ==========================================
+// UNIDAD 2: HERENCIA Y POLIMORFISMO
+// ==========================================
 
 /**
- * [PRINCIPIO: Interface Segregation (I)]
- * Creamos una interfaz específica para las carreras. 
- * Así las clases no dependen de objetos genéricos, sino de contratos claros.
+ * [SUPERCLASE ABSTRACTA]
+ * Define la abstracción base. Cumple con la Unidad 1 (Abstracción).
  */
-interface ICarrera {
-    nombre: string;
-    cupos: number;
-    minPuntaje: number;
+abstract class Persona {
+    // [ENCAPSULAMIENTO]: Atributo protegido accesible solo por herencia.
+    protected _nombre: string;
+
+    constructor(nombre: string) {
+        this._nombre = nombre;
+    }
+
+    // [MÉTODOS GET/SET]: Encapsulamiento modular (Unidad 1).
+    public get nombre(): string { return this._nombre; }
+    
+    /**
+     * [POLIMORFISMO]: Método abstracto.
+     * Obliga a las subclases a definir su propia identificación.
+     */
+    abstract obtenerIdentificacion(): string;
 }
 
-/**
- * [Patrón Observer (Comportamiento)(Interfaz)]
- * Define el contrato para cualquier objeto que quiera "escuchar" cambios en el sistema.
- */
-interface Observer {
-    update(nombre: string, estado: EstadoCupo): void;
-}
+// ==========================================
+// UNIDAD 1: FUNDAMENTOS DE POO
+// ==========================================
 
 /**
- * [Patrón Observer (Comportamiento) (Implementación)]
- * [PRINCIPIO: Single Responsibility (S)]
- * Esta clase solo tiene la tarea de notificar por consola. 
- * Si quisiéramos enviar un SMS, crearíamos otro Observer.
+ * [SUBCLASE / HERENCIA SIMPLE]
+ * 'Aspirante' hereda de 'Persona'. Relación "Es-Un".
  */
-class NotificadorAdmin implements Observer {
-    update(nombre: string, estado: EstadoCupo): void {
-        console.log(`\n NOTIFICACIÓN: El aspirante ${nombre} ha cambiado su estado a: ${estado}`);
+class Aspirante extends Persona {
+    // [PROPIEDADES PRIVADAS]: Encapsulamiento estricto.
+    private _id: number;
+    private _puntaje: number;
+    private _carreraDeseada: string;
+    
+    // [RELACIONES]: Propiedades de instancia.
+    public grupos: number[];
+    public carreraAsignada: string | null = null;
+    public grupoAsignadoFinal: string | null = null;
+    public estadoCupo: EstadoCupo = "PENDIENTE";
+
+    /**
+     * [CONSTRUCTOR]: Uso de super() para inicializar la superclase.
+     */
+    constructor(id: number, nombre: string, puntaje: number, carreraDeseada: string, grupos: number[], tieneTitulo: boolean = false) {
+        super(nombre); // [HERENCIA]: Llama al constructor del padre.
+        this._id = id;
+        this._puntaje = puntaje;
+        this._carreraDeseada = carreraDeseada;
+        // Lógica: El grupo 7 es Población General. Si tiene título solo va al 7.
+        this.grupos = tieneTitulo ? [7] : [...grupos, 7]; 
+        this.grupos.sort((a, b) => a - b);
+    }
+
+    // [GETTERS]: Acceso controlado a propiedades privadas.
+    public get id(): number { return this._id; }
+    public get puntaje(): number { return this._puntaje; }
+    public get carreraDeseada(): string { return this._carreraDeseada; }
+
+    /**
+     * [MÉTODO PARA LISTADO]: Muestra los nombres de los grupos a los que pertenece.
+     */
+    public obtenerNombresGrupos(): string {
+        const nombres: Record<number, string> = {
+            1: "Cuotas", 2: "Vulnerabilidad", 3: "Mérito", 4: "Otros", 
+            5: "Pueblos", 6: "Régimen", 7: "General"
+        };
+        return this.grupos.map(g => nombres[g]).join(", ");
+    }
+
+    /**
+     * [POLIMORFISMO CON CLASES ABSTRACTAS]: 
+     */
+    public obtenerIdentificacion(): string {
+        return `ASP-2025-ID-${this._id}`;
     }
 }
 
+// ==========================================
+// UNIDAD 3: PATRONES DE DISEÑO Y SOLID
+// ==========================================
 
-/**
- * [PRINCIPIO: Single Responsibility (S)]
- * La clase Aspirante solo se encarga de almacenar los datos del estudiante.
- */
-class Aspirante {
-    public carreraAsignada: string | null = null;
-    public estadoCupo: EstadoCupo = "PENDIENTE";
-
-    constructor(
-        public nombre: string,
-        public apellido: string,
-        public cedula: string,
-        public puntaje: number,
-        public carreraDeseada: string
-    ) {}
+interface ICarrera {
+    nombre: string;
+    minPuntaje: number;
+    segmentos: Map<number, number>;
 }
 
+interface IObserver {
+    update(nombre: string, estado: EstadoCupo, detalle: string): void;
+}
+
+type EstadoCupo = "PENDIENTE" | "ACEPTADO" | "RECHAZADO";
+
 /**
- * Patrón Singleton (Creacional)
- * Garantiza que solo exista una única base de datos (instancia) en todo el programa.
- * [PRINCIPIO: Single Responsibility (S)]
- * Su única tarea es gestionar el almacenamiento de los aspirantes.
+ * [PATRÓN CREACIONAL: Singleton]
  */
 class AspiranteRepository {
     private static instance: AspiranteRepository;
-    private aspirantes: Map<string, Aspirante> = new Map();
+    private aspirantes: Aspirante[] = [];
 
-    private constructor() {} // Constructor privado para evitar 'new' externo
+    private constructor() {}
 
     public static getInstance(): AspiranteRepository {
         if (!AspiranteRepository.instance) {
@@ -71,116 +115,168 @@ class AspiranteRepository {
         return AspiranteRepository.instance;
     }
 
-    registrar(a: Aspirante): void { this.aspirantes.set(a.cedula, a); }
-    obtenerTodos(): Aspirante[] { return Array.from(this.aspirantes.values()); }
+    public registrar(a: Aspirante): void { this.aspirantes.push(a); }
+    public obtenerTodos(): Aspirante[] { return this.aspirantes; }
 }
 
 /**
- * Patrón Adapter (Estructural)
- * Actúa como un intermediario para validar la lógica de negocio. 
- * [PRINCIPIO: Open/Closed (O)]
- * Si las reglas de ingreso cambian (ej. sumar puntos extra), solo modificamos 
- * el Adaptador sin tocar el resto del sistema.
+ * [PATRÓN ESTRUCTURAL: Adapter]
  */
-class ValidadorAdapter {
-    static validar(aspirante: Aspirante, carrera: ICarrera): boolean {
-        if (aspirante.puntaje < carrera.minPuntaje) {
-            console.log(`\n ERROR: Puntaje insuficiente (${aspirante.puntaje} < ${carrera.minPuntaje})`);
-            return false;
-        }
-        if (carrera.cupos <= 0) {
-            console.log(`\n ERROR: Sin cupos en ${carrera.nombre}`);
-            return false;
-        }
-        return true;
+class CupoValidatorAdapter {
+    public static puedeAcceder(carrera: ICarrera, grupoId: number): boolean {
+        const disponibles = carrera.segmentos.get(grupoId) || 0;
+        return disponibles > 0;
     }
 }
 
 /**
- * [Patrón Adapter (Estructural) (Sujeto)]
- * Mantiene una lista de observadores y les avisa.
+ * [PATRÓN DE COMPORTAMIENTO: Observer]
+ * [PRINCIPIO: Single Responsibility (S)]
+ */
+class NotificadorAdmin implements IObserver {
+    public update(nombre: string, estado: EstadoCupo, detalle: string): void {
+        console.log(`\n[OBSERVER] Notificación: ${nombre} -> ${estado}. ${detalle}`);
+    }
+}
+
+/**
+ * [PRINCIPIO: Open/Closed (O)]
  * [PRINCIPIO: Dependency Inversion (D)]
- * El servicio no depende de una clase "Notificador" específica, 
- * sino de la interfaz abstracta 'Observer'.
  */
 class AsignacionService {
-    private observadores: Observer[] = [];
-    
-    // [PRINCIPIO: Liskov Substitution (L)]
-    // El código funciona con cualquier objeto que cumpla la interfaz ICarrera.
-    public carreras: Record<string, ICarrera> = {
-        "INGENIERÍA CIVIL": { nombre: "INGENIERÍA CIVIL", cupos: 100, minPuntaje: 80 },
-        "MEDICINA": { nombre: "MEDICINA", cupos: 50, minPuntaje: 90 },
-        "DERECHO": { nombre: "DERECHO", cupos: 120, minPuntaje: 85 }
-    };
+    private observadores: IObserver[] = [];
+    public carreras: Map<string, ICarrera> = new Map();
 
-    agregarObservador(o: Observer) { this.observadores.push(o); }
-
-    private notificar(nombre: string, estado: EstadoCupo) {
-        this.observadores.forEach(o => o.update(nombre, estado));
+    constructor() {
+        this.configurarCarrera("MEDICINA", 10, 90);
+        this.configurarCarrera("INGENIERIA", 15, 80);
     }
 
-    procesarEstado(aspirante: Aspirante, nuevoEstado: EstadoCupo, nombreCarrera?: string): void {
-        if (nuevoEstado === "ACEPTADO" && nombreCarrera) {
-            const carrera = this.carreras[nombreCarrera.toUpperCase()];
-            // Usamos el Adaptador para validar
-            if (carrera && ValidadorAdapter.validar(aspirante, carrera)) {
-                aspirante.carreraAsignada = carrera.nombre;
-                aspirante.estadoCupo = "ACEPTADO";
-                carrera.cupos--;
+    public agregarObservador(o: IObserver) { this.observadores.push(o); }
+
+    /**
+     * [SOBRECARGA]: Simulación mediante parámetros opcionales.
+     */
+    private configurarCarrera(nombre: string, cupos: number, min: number = 70) {
+        const segmentos = new Map<number, number>();
+        segmentos.set(3, Math.floor(cupos * 0.30)); // 30% para Mérito
+        segmentos.set(7, Math.floor(cupos * 0.70)); // 70% para General
+        this.carreras.set(nombre.toUpperCase(), { nombre, minPuntaje: min, segmentos });
+    }
+
+    /**
+     * [PRINCIPIO: Liskov Substitution (L)]
+     */
+    public ejecutarAsignacionAutomatica(aspirantes: Aspirante[]) {
+        const ordenados = [...aspirantes].sort((a, b) => b.puntaje - a.puntaje);
+        ordenados.forEach(asp => {
+            const carrera = this.carreras.get(asp.carreraDeseada.toUpperCase());
+            if (!carrera || asp.puntaje < carrera.minPuntaje) {
+                asp.estadoCupo = "RECHAZADO";
+                return;
             }
-        } else {
-            aspirante.estadoCupo = nuevoEstado;
-            aspirante.carreraAsignada = null;
+            for (const grupoId of asp.grupos) {
+                if (CupoValidatorAdapter.puedeAcceder(carrera, grupoId)) {
+                    const actual = carrera.segmentos.get(grupoId) || 0;
+                    carrera.segmentos.set(grupoId, actual - 1);
+                    asp.estadoCupo = "ACEPTADO";
+                    asp.carreraAsignada = carrera.nombre;
+                    asp.grupoAsignadoFinal = `Segmento-${grupoId}`;
+                    break;
+                }
+            }
+            if (asp.estadoCupo === "PENDIENTE") asp.estadoCupo = "RECHAZADO";
+        });
+    }
+
+    public modificarManualmente(id: number, nuevoEstado: EstadoCupo, repo: AspiranteRepository) {
+        const asp = repo.obtenerTodos().find(a => a.id === id);
+        if (!asp) return "ID no encontrado.";
+
+        const carrera = this.carreras.get(asp.carreraDeseada.toUpperCase());
+        if (nuevoEstado === "ACEPTADO" && carrera) {
+            asp.estadoCupo = "ACEPTADO";
+            asp.carreraAsignada = carrera.nombre;
+            asp.grupoAsignadoFinal = "ADMIN_FORZADO";
+            this.notificar(asp, "Asignación manual confirmada");
+            return "Estado: ACEPTADO.";
         }
-        // Notificamos a los interesados mediante el patrón Observer
-        this.notificar(aspirante.nombre, aspirante.estadoCupo);
+        asp.estadoCupo = nuevoEstado;
+        this.notificar(asp, "Cambio manual realizado");
+        return "Estado actualizado.";
+    }
+
+    private notificar(asp: Aspirante, detalle: string) {
+        this.observadores.forEach(o => o.update(asp.nombre, asp.estadoCupo, detalle));
     }
 }
 
-// --- MENÚ PRINCIPAL ---
+// ==========================================
+// FUNCIONAMIENTO DEL SISTEMA (EJECUCIÓN)
+// ==========================================
 async function main() {
-    // Obtenemos la instancia única (Singleton)
-    const repo = AspiranteRepository.getInstance(); 
+    const repo = AspiranteRepository.getInstance();
     const service = new AsignacionService();
-    
-    // Suscribimos un observador
-    service.agregarObservador(new NotificadorAdmin()); 
+    service.agregarObservador(new NotificadorAdmin());
+
+    // [OBJETOS]: 20 Aspirantes con diferentes grupos asignados
+    const bdFicticia = [
+        new Aspirante(1, "Ana Garcia", 98, "MEDICINA", [3]),
+        new Aspirante(2, "Luis Pincay", 85, "INGENIERIA", [2]),
+        new Aspirante(3, "Maria Shuar", 92, "MEDICINA", [5]),
+        new Aspirante(4, "Jose Zambrano", 70, "INGENIERIA", []),
+        new Aspirante(5, "Kevin Meza", 95, "MEDICINA", [1]),
+        new Aspirante(6, "Carla Vera", 88, "MEDICINA", [3]),
+        new Aspirante(7, "Juan Castro", 99, "MEDICINA", [], true),
+        new Aspirante(8, "Sofia Reyes", 91, "MEDICINA", [2]),
+        new Aspirante(9, "Diego Luna", 82, "INGENIERIA", [6]),
+        new Aspirante(10, "Elena Paz", 94, "MEDICINA", [4]),
+        new Aspirante(11, "Roberto Solis", 89, "INGENIERIA", [3]),
+        new Aspirante(12, "Lucia Fernandez", 93, "MEDICINA", [2]),
+        new Aspirante(13, "Ricardo Palma", 81, "INGENIERIA", [5]),
+        new Aspirante(14, "Marta Gomez", 75, "INGENIERIA", []),
+        new Aspirante(15, "Andres Pico", 96, "MEDICINA", [3]),
+        new Aspirante(16, "Paola Ruiz", 87, "INGENIERIA", [1]),
+        new Aspirante(17, "Fernando Toro", 90, "MEDICINA", [6]),
+        new Aspirante(18, "Diana Vite", 84, "INGENIERIA", [3]),
+        new Aspirante(19, "Gabriel Moreira", 97, "MEDICINA", [3]),
+        new Aspirante(20, "Ximena Loor", 79, "INGENIERIA", [2]),
+    ];
+
+    bdFicticia.forEach(e => repo.registrar(e));
+    service.ejecutarAsignacionAutomatica(repo.obtenerTodos());
 
     const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-    const input = (q: string): Promise<string> => new Promise((res) => rl.question(q, res));
+    const ask = (q: string): Promise<string> => new Promise(res => rl.question(q, res));
 
-    // Seed Data
-    repo.registrar(new Aspirante("Jover", "Moreira", "1301", 95, "MEDICINA"));
-    repo.registrar(new Aspirante("Kevin", "Pinkay", "1302", 75, "DERECHO"));
+    let salir = false;
+    while (!salir) {
+        console.log("\n--- SISTEMA DE ADMISIÓN ULEAM 2025 ---");
+        console.log("1. Ver Listado (Grupos, Puntajes y Estados)");
+        console.log("2. Modificar Estado (Manual)");
+        console.log("3. Salir");
+        const op = await ask("Opcion: ");
 
-    let continuar = true;
-    while (continuar) {
-        console.log("\n=== ULEAM: SOLID + PATRONES ===");
-        console.log("1. Ver Lista\n2. Gestionar Estado\n3. Salir");
-        const opt = await input("Opción: ");
-
-        if (opt === "1") {
-            repo.obtenerTodos().forEach(a => console.log(`${a.nombre} - ${a.estadoCupo} - Puntaje: ${a.puntaje}`));
-        } else if (opt === "2") {
-            const lista = repo.obtenerTodos();
-            lista.forEach((a, i) => console.log(`${i + 1}. ${a.nombre}`));
-            const sel = parseInt(await input("Seleccione #: ")) - 1;
-            
-            if (lista[sel]) {
-                const acc = await input("[1] Aceptar [2] Rechazar [3] Pendiente: ");
-                if (acc === "1") {
-                    const car = await input(`Asignar carrera (${lista[sel].carreraDeseada}): `);
-                    service.procesarEstado(lista[sel], "ACEPTADO", car);
-                } else {
-                    service.procesarEstado(lista[sel], acc === "2" ? "RECHAZADO" : "PENDIENTE");
-                }
-            }
-        } else if (opt === "3") {
-            continuar = false;
-            rl.close();
+        if (op === "1") {
+            // [LISTADO MODIFICADO]: Ahora muestra los grupos a los que pertenece el aspirante
+            console.table(repo.obtenerTodos().map(a => ({
+                ID: a.obtenerIdentificacion(), 
+                Nombre: a.nombre, 
+                Pts: a.puntaje, 
+                "Pertenece a Grupos": a.obtenerNombresGrupos(), // NUEVA COLUMNA SOLICITADA
+                Estado: a.estadoCupo, 
+                Asignada: a.carreraAsignada || "Ninguna",
+                "Segmento Ganado": a.grupoAsignadoFinal || "N/A"
+            })));
+        } else if (op === "2") {
+            const id = parseInt(await ask("ID: "));
+            const est = await ask("1: ACEPTAR, 2: RECHAZAR: ");
+            console.log(`>> ${service.modificarManualmente(id, est === "1" ? "ACEPTADO" : "RECHAZADO", repo)}`);
+        } else if (op === "3") {
+            salir = true;
         }
     }
+    rl.close();
 }
 
 main();
